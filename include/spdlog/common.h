@@ -18,7 +18,7 @@
 #include <locale>
 #endif
 
-#include "spdlog/details/null_mutex.h"
+#include "details/null_mutex.h"
 
 //visual studio upto 2013 does not support noexcept nor constexpr
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -42,8 +42,7 @@
 #define SPDLOG_DEPRECATED
 #endif
 
-
-#include "spdlog/fmt/fmt.h"
+#include "fmt/fmt.h"
 
 namespace spdlog
 {
@@ -81,7 +80,10 @@ typedef enum
     off = 6
 } level_enum;
 
-static const char* level_names[] { "trace", "debug", "info",  "warning", "error", "critical", "off" };
+#if !defined(SPDLOG_LEVEL_NAMES)
+#define SPDLOG_LEVEL_NAMES { "trace", "debug", "info",  "warning", "error", "critical", "off" };
+#endif
+static const char* level_names[] SPDLOG_LEVEL_NAMES
 
 static const char* short_level_names[] { "T", "D", "I", "W", "E", "C", "O" };
 

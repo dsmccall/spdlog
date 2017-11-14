@@ -12,8 +12,8 @@
 // 2. Format the message using the formatter function
 // 3. Pass the formatted message to its sinks to performa the actual logging
 
-#include "spdlog/sinks/base_sink.h"
-#include "spdlog/common.h"
+#include "sinks/base_sink.h"
+#include "common.h"
 
 #include <vector>
 #include <memory>
@@ -118,6 +118,9 @@ protected:
     // return true if the given message level should trigger a flush
     bool _should_flush_on(const details::log_msg&);
 
+    // increment the message count (only if defined(SPDLOG_ENABLE_MESSAGE_COUNTER))
+    void _incr_msg_counter(details::log_msg &msg);
+
     const std::string _name;
     std::vector<sink_ptr> _sinks;
     formatter_ptr _formatter;
@@ -129,4 +132,4 @@ protected:
 };
 }
 
-#include "spdlog/details/logger_impl.h"
+#include "details/logger_impl.h"

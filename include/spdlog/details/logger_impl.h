@@ -5,12 +5,11 @@
 
 #pragma once
 
-#include "spdlog/logger.h"
-#include "spdlog/sinks/stdout_sinks.h"
+#include "../logger.h"
+#include "../sinks/stdout_sinks.h"
 
 #include <memory>
 #include <string>
-
 
 // create logger with given name, sinks and the default pattern formatter
 // all other ctors will call this one
@@ -58,7 +57,6 @@ inline void spdlog::logger::set_pattern(const std::string& pattern, pattern_time
     _set_pattern(pattern, pattern_time);
 }
 
-
 template <typename... Args>
 inline void spdlog::logger::log(level::level_enum lvl, const char* fmt, const Args&... args)
 {
@@ -67,17 +65,18 @@ inline void spdlog::logger::log(level::level_enum lvl, const char* fmt, const Ar
     try
     {
         details::log_msg log_msg(&_name, lvl);
+
+#if defined(SPDLOG_FMT_PRINTF)
+        fmt::printf(log_msg.raw, fmt, args...);
+#else
         log_msg.raw.write(fmt, args...);
+#endif
         _sink_it(log_msg);
     }
     catch (const std::exception &ex)
     {
         _err_handler(ex.what());
-    }
-    catch (...)
-    {
-        _err_handler("Unknown exception");
-    }
+    }   
 }
 
 template <typename... Args>
@@ -93,12 +92,7 @@ inline void spdlog::logger::log(level::level_enum lvl, const char* msg)
     catch (const std::exception &ex)
     {
         _err_handler(ex.what());
-    }
-    catch (...)
-    {
-        _err_handler("Unknown exception");
-    }
-
+    }   
 }
 
 template<typename T>
@@ -114,11 +108,7 @@ inline void spdlog::logger::log(level::level_enum lvl, const T& msg)
     catch (const std::exception &ex)
     {
         _err_handler(ex.what());
-    }
-    catch (...)
-    {
-        _err_handler("Unknown exception");
-    }
+    }  
 }
 
 
@@ -326,6 +316,7 @@ inline void spdlog::logger::critical_if(const bool flag, const T& msg)
 
 #ifdef SPDLOG_WCHAR_TO_UTF8_SUPPORT
 #include <codecvt>
+#include <locale>
 
 template <typename... Args>
 inline void spdlog::logger::log(level::level_enum lvl, const wchar_t* msg)
@@ -399,7 +390,7 @@ inline void spdlog::logger::log_if(const bool flag, level::level_enum lvl, const
 {
     if (flag)
     {
-        log(lvl, fmt, args);
+        log(lvl, fmt, args...);
     }
 }
 
@@ -507,7 +498,7 @@ inline bool spdlog::logger::should_log(spdlog::level::level_enum msg_level) cons
 inline void spdlog::logger::_sink_it(details::log_msg& msg)
 {
 #if defined(SPDLOG_ENABLE_MESSAGE_COUNTER)
-    msg.msg_id = _msg_counter.fetch_add(1, std::memory_order_relaxed);
+    _incr_msg_counter(msg);
 #endif
     _formatter->format(msg);
     for (auto &sink : _sinks)
@@ -557,7 +548,13 @@ inline bool spdlog::logger::_should_flush_on(const details::log_msg &msg)
     return (msg.level >= flush_level) && (msg.level != level::off);
 }
 
+inline void spdlog::logger::_incr_msg_counter(details::log_msg &msg)
+{
+    msg.msg_id = _msg_counter.fetch_add(1, std::memory_order_relaxed);
+}
+
 inline const std::vector<spdlog::sink_ptr>& spdlog::logger::sinks() const
 {
     return _sinks;
 }
+

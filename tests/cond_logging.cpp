@@ -31,6 +31,8 @@ std::string conditional_log(const bool flag, const T& what, spdlog::level::level
     case spdlog::level::critical:
         oss_logger.critical_if(flag, what);
         break;
+    default:
+        break;
     }
 
     return oss.str().substr(0, oss.str().length() - spdlog::details::os::eol_size);
@@ -65,6 +67,8 @@ std::string conditional_log_varags(spdlog::level::level_enum logger_level, const
         break;
     case spdlog::level::critical:
         oss_logger.critical_if(flag, fmt, arg1, args...);
+        break;
+    default:
         break;
     }
 
@@ -103,6 +107,8 @@ std::wstring conditional_log_varags(spdlog::level::level_enum logger_level, cons
     case spdlog::level::critical:
         oss_logger.critical_if(flag, fmt, arg1, args...);
         break;
+    default:
+        break;
     }
 
     return oss.str().substr(0, oss.str().length() - spdlog::details::os::eol_size);
@@ -129,6 +135,7 @@ TEST_CASE("conditional_trace_varargs", "[conditional_trace_varargs]")
     //const char
     for (auto i = 0; i < 2; i++)
     {
+#if !defined(SPDLOG_FMT_PRINTF)
         REQUIRE(conditional_log_varags(spdlog::level::trace, (i % 2 == 0), "Hello {}", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
         REQUIRE(conditional_log_varags(spdlog::level::debug, (i % 2 == 0), "Hello {}", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
         REQUIRE(conditional_log_varags(spdlog::level::info, (i % 2 == 0), "Hello {}", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
@@ -144,5 +151,24 @@ TEST_CASE("conditional_trace_varargs", "[conditional_trace_varargs]")
         REQUIRE(conditional_log_varags(spdlog::level::err, (i % 2 == 0), L"Hello {}", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
         REQUIRE(conditional_log_varags(spdlog::level::critical, (i % 2 == 0), L"Hello {}", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
 #endif // SPDLOG_WCHAR_TO_UTF8_SUPPORT
+
+#else
+        REQUIRE(conditional_log_varags(spdlog::level::trace, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+        REQUIRE(conditional_log_varags(spdlog::level::debug, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+        REQUIRE(conditional_log_varags(spdlog::level::info, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+        REQUIRE(conditional_log_varags(spdlog::level::warn, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+        REQUIRE(conditional_log_varags(spdlog::level::err, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+        REQUIRE(conditional_log_varags(spdlog::level::critical, (i % 2 == 0), "Hello %d", i) == (i % 2 == 0 ? "Hello " + std::to_string(i) : ""));
+
+#ifdef SPDLOG_WCHAR_TO_UTF8_SUPPORT
+        REQUIRE(conditional_log_varags(spdlog::level::trace, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+        REQUIRE(conditional_log_varags(spdlog::level::debug, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+        REQUIRE(conditional_log_varags(spdlog::level::info, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+        REQUIRE(conditional_log_varags(spdlog::level::warn, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+        REQUIRE(conditional_log_varags(spdlog::level::err, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+        REQUIRE(conditional_log_varags(spdlog::level::critical, (i % 2 == 0), L"Hello %d", i) == (i % 2 == 0 ? L"Hello " + std::to_wstring(i) : L""));
+#endif // SPDLOG_WCHAR_TO_UTF8_SUPPORT
+
+#endif // !defined(SPDLOG_FMT_PRINTF)
     }
 }
