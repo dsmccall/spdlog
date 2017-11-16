@@ -11,6 +11,7 @@
 #include "../spdlog.h"
 #include "../details/registry.h"
 #include "../sinks/file_sinks.h"
+#include "../sinks/daily_rotating_file_sink.h"
 #include "../sinks/stdout_sinks.h"
 #ifdef SPDLOG_ENABLE_SYSLOG
 #include "../sinks/syslog_sink.h"
@@ -26,6 +27,9 @@
 #ifdef __ANDROID__
 #include "../sinks/android_sink.h"
 #endif
+
+#include "spdlog/configuration.h"
+#include "spdlog/macros.h"
 
 #include <chrono>
 #include <functional>
