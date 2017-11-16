@@ -41,9 +41,28 @@ protected:
 private:
     std::vector<std::string> m_messages;
 };
+struct resetter
+{
+    resetter()
+    {
+        spd::drop_all();
+        spd::set_sync_mode();
+        spd::set_error_handler(nullptr);
+    }
+
+    ~resetter()
+    {
+        spd::drop_all();
+        spd::set_sync_mode();
+        spd::set_error_handler(nullptr);
+    }
+};
+
 
 TEST_CASE("basic", "[auto_configuration]")
 {
+    resetter r{};
+
     {
         auto conf = spd::configuration{};
         conf.add_sink("test_stdout_sink", spd::configuration::sink_config{ "stdout_sink_st" });
@@ -59,12 +78,12 @@ TEST_CASE("basic", "[auto_configuration]")
     const auto& sinks = logger->sinks();
 
     REQUIRE(sinks.size() == 2);
-
-    spd::drop_all();
 }
 
 TEST_CASE("custom_sink", "[auto_configuration]")
 {
+    resetter r{};
+
     spd::configuration::register_custom_sink("test_sink_mt", [](const spdlog::configuration::sink_config&)
     {
         return std::make_shared<test_sink<std::mutex>>();
@@ -117,12 +136,12 @@ TEST_CASE("custom_sink", "[auto_configuration]")
     REQUIRE(st_sink->messages()[2] == "error message");
     REQUIRE(mt_sink->messages()[3] == "critical message");
     REQUIRE(st_sink->messages()[3] == "critical message");
-
-    spd::drop_all();
 }
 
 TEST_CASE("macros", "[auto_configuration]")
 {
+    resetter r{};
+
     spd::configuration::register_custom_sink("test_sink_mt", [](const spdlog::configuration::sink_config&)
     {
         return std::make_shared<test_sink<std::mutex>>();
@@ -176,11 +195,30 @@ TEST_CASE("macros", "[auto_configuration]")
     REQUIRE(mt_sink->messages()[3] == "critical message");
     REQUIRE(st_sink->messages()[3] == "critical message");
 
-    spd::drop_all();
+    SPD_AUTO_TRACE_FMT("trace {} message {}", "test", 1);
+    SPD_AUTO_DEBUG_FMT("debug {} message {}", 2, "test");
+    SPD_AUTO_INFO_FMT("info {} message {}", 3, 4);
+    SPD_AUTO_WARN_FMT("warn {} message {}", 5, 6);
+    SPD_AUTO_ERROR_FMT("error {} message {}", 7, 8);
+    SPD_AUTO_CRITICAL_FMT("critical {} message {}", 9, 10);
+
+    REQUIRE(mt_sink->messages().size() == 8);
+    REQUIRE(st_sink->messages().size() == 8);
+
+    REQUIRE(mt_sink->messages()[4] == "info 3 message 4");
+    REQUIRE(st_sink->messages()[4] == "info 3 message 4");
+    REQUIRE(mt_sink->messages()[5] == "warn 5 message 6");
+    REQUIRE(st_sink->messages()[5] == "warn 5 message 6");
+    REQUIRE(mt_sink->messages()[6] == "error 7 message 8");
+    REQUIRE(st_sink->messages()[6] == "error 7 message 8");
+    REQUIRE(mt_sink->messages()[7] == "critical 9 message 10");
+    REQUIRE(st_sink->messages()[7] == "critical 9 message 10");
 }
 
 TEST_CASE("globals", "[auto_configuration]")
 {
+    resetter r{};
+
     std::atomic<size_t> warmup_called = 0;
     std::atomic<size_t> teardown_called = 0;
     std::string error_message = "";

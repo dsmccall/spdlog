@@ -48,6 +48,7 @@ namespace spdlog
                 std::stringstream m_stream;
             };
 
+            // Parse a CSV into a vector of components.  Commas within a quotes string are ignored
             inline std::vector<std::string> parse_csv(const std::string& csv)
             {
                 std::vector<std::string> result;
@@ -131,6 +132,8 @@ namespace spdlog
                 return result;
             }
 
+            // Split a string on any given range of characters.
+            // Optionally parse only the first n instances of the characters
             inline std::vector<std::string> tokenize(const std::string& input, const std::string& delimiters, size_t max = std::numeric_limits<size_t>::max())
             {
                 // handle empty string
@@ -173,29 +176,6 @@ namespace spdlog
                 return result;
             }
 
-            // Take a string of "[p1=v1,p2=v2,...,pn=vn]",
-            // turn it into a map<string,string>
-            inline auto get_extra_parameters(const std::string& parameters) -> std::map<std::string, std::string>
-            {
-                auto start = parameters.find('[');
-                auto end = parameters.rfind(']');
-                auto values = parameters.substr(start + 1, end - start - 1);
-                auto tokens = utilities::tokenize(values, ",");
-
-                std::map<std::string, std::string> result;
-                for (const auto& token : tokens)
-                {
-                    auto value_pair = utilities::tokenize(token, "=");
-                    if (value_pair.size() != 2)
-                    {
-                        throw std::logic_error{ utilities::make_string{} << "Malformed parameter pair: " << token };
-                    }
-                    result.insert(std::make_pair(value_pair.front(), value_pair.back()));
-                }
-
-                return result;
-            }
-
             using Item = std::pair<const char*, spdlog::level::level_enum>;
             constexpr Item ItemMap[] =
             {
@@ -215,6 +195,7 @@ namespace spdlog
                 return (range == 0) ? spdlog::level::info : (strcmp(ItemMap[range - 1].first, key) == 0) ? ItemMap[range - 1].second : find_log_level(key, range - 1);
             };
 
+            // Implement less than ordering on strings, ignoring case
             struct caseless_less_than : std::binary_function<std::string, std::string, bool>
             {
             public:
@@ -309,7 +290,7 @@ namespace spdlog
 #ifdef __ANDROID__
             inline auto make_android_sink(const configuration::sink_config& config) -> std::shared_ptr<spdlog::sinks::sink>
             {
-                auto tag = get_attribute_default<std::string>("tag", config.attributes);
+                auto tag = get_attribute_default<std::string>("tag", config.attributes, "spdlog");
                 auto use_raw_msg = get_attribute_default<bool>("use_raw_msg", config.attributes, false);
                 return std::make_shared<android_sink>(tag, use_raw_msg);
             }
@@ -898,7 +879,7 @@ namespace spdlog
 
     inline configuration::logger_config::logger_config(const std::string& config)
     {
-        // Parse the string: {name}(,[{attributes}])
+        // Parse the string: {level}(,[{attributes}])
         auto line = config_line::parse(config);
 
         // Find the sinks - this is a mandatory attribute

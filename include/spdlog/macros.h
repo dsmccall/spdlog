@@ -3,6 +3,18 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 
+//
+// These macros are designed to allow a developer to write to all loggers at once, with a single
+// macro call.  The first form SPD_AUTO_{level} allows building a message by streaming any object that supports
+// the << operator.
+// e.g. SPD_AUTO_TRACE("We have " << n << " problems with object " << anObject)
+// They are designed so that the formatted string is not built unless one or more of the loggers requires it,
+// and it is only built once.
+//
+// The second form SPD_AUTO_{level}_FMT allows building a message using positional formatting
+// e.g. SPD_AUTO_TRACE_FMT("Hello {} my age is {}", "Bob", 85);
+//
+
 #define SPD_AUTO_BUILD_STRING(...) spdlog::detail::utilities::make_string{} << __VA_ARGS__ >> spdlog::detail::utilities::make_string::to_string
 
 #define SPD_AUTO_LOG(level, ...)                               \
