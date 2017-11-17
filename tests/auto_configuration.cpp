@@ -41,6 +41,8 @@ protected:
 private:
     std::vector<std::string> m_messages;
 };
+
+// Helper to reset some global settings to defaults
 struct resetter
 {
     resetter()
@@ -263,4 +265,102 @@ TEST_CASE("globals", "[auto_configuration]")
     REQUIRE(warmup_called == 1);
     REQUIRE(teardown_called == 1);
     REQUIRE(error_message == "Error in 'throwing_sink': my caught error message");
+}
+
+TEST_CASE("stream_configuration", "[auto_configuration]")
+{
+    std::atomic<size_t> warmup_called = 0;
+    std::atomic<size_t> teardown_called = 0;
+    std::string error_message = "";
+
+    spd::configuration::register_custom_sink("test_sink_mt", [](const spdlog::configuration::sink_config&)
+    {
+        return std::make_shared<test_sink<std::mutex>>();
+    });
+
+    spd::configuration::register_custom_sink("test_sink_st", [](const spdlog::configuration::sink_config&)
+    {
+        return std::make_shared<test_sink<spd::details::null_mutex>>();
+    });
+
+    spd::configuration::register_worker_warmup("test_warmup", [&warmup_called]()
+    {
+        ++warmup_called;
+    });
+
+    spd::configuration::register_worker_teardown("test_teardown", [&teardown_called]()
+    {
+        ++teardown_called;
+    });
+
+    spd::configuration::register_error_handler("test_error_handler", [&error_message](const std::string& msg)
+    {
+        error_message = msg;
+    });
+
+    spd::configuration::register_custom_sink("throwing_sink", [](const spdlog::configuration::sink_config&)
+    {
+        return std::make_shared<throwing_sink>();
+    });
+
+    // Build up a configuration
+    std::stringstream ss;
+    ss << R"(spdlog.set_async=16384,[worker_warmup_cb=test_warmup,worker_teardown_cb=test_teardown])" << std::endl;
+    ss << R"(spdlog.set_error_handler=test_error_handler)" << std::endl;
+    ss << R"(spdlog.set_pattern="%v")" << std::endl;
+    ss << R"(spdlog.sink.test_stdout_sink=test_sink_mt)" << std::endl;
+    ss << R"(spdlog.sink.test_stderr_sink=test_sink_st)" << std::endl;
+    ss << R"(spdlog.sink.test_throwing_sink=throwing_sink)" << std::endl;
+    ss << R"(spdlog.logger.test_logger=INFO,[sinks=test_stdout_sink:test_stderr_sink])" << std::endl;
+    ss << R"(spdlog.logger.test_throwing_logger=INFO,[sinks=test_throwing_sink])" << std::endl;
+
+    {
+        resetter r{};
+
+        auto conf = spd::configuration::create(ss);
+        conf.configure();
+
+        {
+            auto logger = spd::get("test_logger");
+            REQUIRE(logger);
+
+            const auto& sinks = logger->sinks();
+
+            REQUIRE(sinks.size() == 2);
+
+            auto mt_sink = std::dynamic_pointer_cast<test_sink<std::mutex>>(sinks[0]);
+            auto st_sink = std::dynamic_pointer_cast<test_sink<spd::details::null_mutex>>(sinks[1]);
+
+            REQUIRE(mt_sink);
+            REQUIRE(st_sink);
+
+            logger->error("hello");
+            logger->flush();
+
+            REQUIRE(mt_sink->messages().size() == 1);
+            REQUIRE(st_sink->messages().size() == 1);
+
+            REQUIRE(mt_sink->messages()[0] == "hello");
+        }
+
+        {
+            auto logger = spd::get("test_throwing_logger");
+            REQUIRE(logger);
+
+            const auto& sinks = logger->sinks();
+
+            REQUIRE(sinks.size() == 1);
+
+            auto sink = std::dynamic_pointer_cast<throwing_sink>(sinks[0]);
+
+            REQUIRE(sink);
+
+            logger->error("hello");
+            logger->flush();
+        }
+    }
+
+    REQUIRE(warmup_called == 2);
+    REQUIRE(teardown_called == 2);
+    REQUIRE(error_message == "Error in 'throwing_sink': hello");
 }

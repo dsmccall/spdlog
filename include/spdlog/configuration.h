@@ -21,7 +21,20 @@ namespace spdlog
     //      global function : non-optional argument for the global function
     //      sink            : sink type (file sink, stdout, etc)
     //      logger          : logger threshold
-    // 
+    //
+    //  Examples:
+    //      - Create an instruction to call set_async, with a queue size of 16384, an overflow_policy of block_retry, and custom warmup/teardown functions
+    //
+    //      spdlog.set_async=16384,[overflow_policy=block_retry,flush_interval_ms=0,worker_warmup_cb=custom_warmup_function,worker_teardown_cb=custom_teardown_function]
+    //      
+    //      - Create a simple file sink named "my_file_sink", where the filename is "c:\library.log", with a truncate setting of false
+    //
+    //      spdlog.sink.my_file_sink=simple_file_sink,[file_path="C:\library.log",truncate=false]
+    //
+    //      - Create a logger named "my_logger", which has a threshold of "TRACE", a pattern of "%v", and has two sinks named "sink_a" and "sink_b"
+    //
+    //      spdlog.logger.my_logger=TRACE,[sinks=sink_a:sink_b,pattern="%v"]
+    //
     class configuration
     {
     public:
@@ -56,7 +69,7 @@ namespace spdlog
 
         //
         // Holds the configuration for a logger - this consists of:
-        //  a level (string containing the threshold at which this logger will log)
+        //  a threshold (string containing the threshold at which this logger will log)
         //  a vector of sink names
         //  a map of optional attributes
         //
@@ -65,7 +78,7 @@ namespace spdlog
             // Construct from a string
             logger_config(const std::string&);
             logger_config(){};
-            std::string level;
+            std::string threshold;
             std::vector<std::string> sinks;
             std::map<std::string, std::string> attributes;
         };

@@ -622,7 +622,7 @@ namespace spdlog
                 }();
 
                 auto logger = spdlog::details::registry::instance().create(name, std::begin(logger_sinks), std::end(logger_sinks));
-                logger->set_level(utilities::find_log_level(config.level.c_str()));
+                logger->set_level(utilities::find_log_level(config.threshold.c_str()));
 
                 // See if a pattern has been specified for this logger
                 {
@@ -656,45 +656,63 @@ namespace spdlog
 
     inline configuration configuration::create(std::istream& in)
     {
-        //std::string line;
+        namespace du = detail::utilities;
 
-        //// A config is a pair consisting of:
-        ////  1: vector of path components (e.g. spdlog.sink.name.attribute, or spdlog.config.name)
-        ////  2: an attribute value as a string
-        //std::vector<config_line> configs;
-        //while (std::getline(in, line))
-        //{
-        //    if (line.find("spdlog.") == 0)
-        //    {
-        //        // First, separate into path and value
-        //        auto tokens = detail::utilities::tokenize(line, "=", 1);
+        auto result = configuration{};
 
-        //        // If there is anything other than 2 tokens, ignore
-        //        if (tokens.size() == 2)
-        //        {
-        //            auto path = tokens.front();
-        //            auto value = tokens.back();
+        std::string line;
+        while (std::getline(in, line))
+        {
+            // If the line doesn't start with "spdlog." then ignore it
+            if (line.find("spdlog.") != 0)
+            {
+                break;
+            }
 
-        //            // Make sure the attribute value is not empty - if it is, ignore it
-        //            if (value.empty())
-        //            {
-        //                throw std::logic_error{ detail::utilities::make_string{} << "the configuration value is empty for the item '" << path << "'" };
-        //            }
+            // Process the line - first, split on the first "=" - this will give us the primary key and value for this string
+            auto key_value = du::tokenize(line, "=", 1);
 
-        //            // Separate the path into components
-        //            auto components = detail::utilities::tokenize(path, ".");
+            // If there aren't two tokens, then ignore the line
+            if (key_value.size() != 2)
+            {
+                break;
+            }
 
-        //            // Must have 'spdlog' as first component, otherwise chuck it away
-        //            if (!components.empty() && components.front() == "spdlog")
-        //            {
-        //                configs.emplace_back(std::make_pair(path_components{ components.begin() + 1, components.end() }, value));
-        //            }
-        //        }
-        //    }            
-        //}
+            // Split the key on "."
+            auto key_elements = du::tokenize(key_value.front(), ".");
 
-        //return configuration{ configs };
-        throw;
+            // "spdlog" is the first element, as we've determined earlier
+            // Now to make some choices - if there is only a single element following "spdlog", then this must be a global function
+            // If there are two, then this is either a key or logger
+            if (key_elements.size() == 2)
+            {
+                // Create a global function
+                result.add_global(key_elements.back(), key_value.back());
+            }
+            else if (key_elements.size() == 3)
+            {
+                auto type = key_elements[1];
+                auto name = key_elements[2];
+                if (type == "logger")
+                {
+                    result.add_logger(name, logger_config{ key_value.back() });
+                }
+                else if (type == "sink")
+                {
+                    result.add_sink(name, sink_config{ key_value.back() });
+                }
+                else
+                {
+                    throw std::runtime_error{ du::make_string{} << "Cannot understand this configuration string: " << line };
+                }
+            }
+            else
+            {
+                // Otherwise this string is nonsense
+                throw std::runtime_error{ du::make_string{} << "Cannot understand this configuration string: " << line };
+            }
+        }
+        return result;
     }
 
     inline configuration configuration::create(const std::vector<config_line>& configs)
@@ -879,7 +897,7 @@ namespace spdlog
 
     inline configuration::logger_config::logger_config(const std::string& config)
     {
-        // Parse the string: {level}(,[{attributes}])
+        // Parse the string: {threshold}(,[{attributes}])
         auto line = config_line::parse(config);
 
         // Find the sinks - this is a mandatory attribute
@@ -894,32 +912,32 @@ namespace spdlog
         }();
         
         // Then, simply copy the rest of the attributes over
-        level = std::move(line.value);
+        threshold = std::move(line.value);
         attributes = std::move(line.attributes);
     }
 
     inline void configuration::register_custom_global_function(const std::string& name, global_function func)
     {
-        detail::global_functions::get_global_func_registry().emplace(std::make_pair(name, std::move(func)));
+        detail::global_functions::get_global_func_registry()[name] = func;
     }
 
     inline void configuration::register_custom_sink(const std::string& name, sink_function func)
     {
-        detail::sink_functions::get_sink_registry().emplace(std::make_pair(name, std::move(func)));
+        detail::sink_functions::get_sink_registry()[name] = func;
     }
 
     inline void configuration::register_worker_warmup(const std::string& name, std::function<void()> func)
     {
-        detail::global_functions::get_warmup_registry().emplace(std::make_pair(name, std::move(func)));
+        detail::global_functions::get_warmup_registry()[name] = func;
     }
 
     inline void configuration::register_worker_teardown(const std::string& name, std::function<void()> func)
     {
-        detail::global_functions::get_teardown_registry().emplace(std::make_pair(name, std::move(func)));
+        detail::global_functions::get_teardown_registry()[name] = func;
     }
 
     inline void configuration::register_error_handler(const std::string& name, std::function<void(const std::string&)> func)
     {
-        detail::error_handlers::get_error_handler_registry().emplace(std::make_pair(name, func));
+        detail::error_handlers::get_error_handler_registry()[name] = func;
     }
 }
