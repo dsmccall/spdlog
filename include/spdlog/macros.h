@@ -18,7 +18,7 @@
 #define SPD_AUTO_BUILD_STRING(...) spdlog::detail::utilities::make_string{} << __VA_ARGS__ >> spdlog::detail::utilities::make_string::to_string
 
 #define SPD_AUTO_LOG(level, ...)                               \
-spdlog::apply_all([message = std::string{}](std::shared_ptr<spdlog::logger> lgr) mutable  \
+spdlog::apply_all([&, message = std::string{}](std::shared_ptr<spdlog::logger> lgr) mutable  \
 {                                                           \
     if (lgr->should_log(level))                             \
     {                                                       \
