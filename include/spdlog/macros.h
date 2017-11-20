@@ -18,9 +18,8 @@
 #define SPD_AUTO_BUILD_STRING(...) spdlog::detail::utilities::make_string{} << __VA_ARGS__ >> spdlog::detail::utilities::make_string::to_string
 
 #define SPD_AUTO_LOG(level, ...)                               \
-spdlog::apply_all([&](std::shared_ptr<spdlog::logger> lgr)  \
+spdlog::apply_all([message = std::string{}](std::shared_ptr<spdlog::logger> lgr) mutable  \
 {                                                           \
-    std::string message;                                    \
     if (lgr->should_log(level))                             \
     {                                                       \
         if (message.empty())                                \
@@ -32,7 +31,7 @@ spdlog::apply_all([&](std::shared_ptr<spdlog::logger> lgr)  \
 });
 
 #define SPD_AUTO_LOG_FMT(level, msg, ...)                      \
-spdlog::apply_all([&](std::shared_ptr<spdlog::logger> lgr)  \
+spdlog::apply_all([](std::shared_ptr<spdlog::logger> lgr)  \
 {                                                           \
     if (lgr->should_log(level))                             \
     {                                                       \
