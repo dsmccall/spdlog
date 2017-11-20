@@ -197,11 +197,6 @@ namespace spdlog
         static configuration create(std::istream&);
 
         //
-        // Automatically build a configuration setup from a vector of configuration lines
-        //
-        static configuration create(const std::vector<config_line>&);
-
-        //
         // Action time!
         // Run all global functions, create all sinks, create all loggers
         //

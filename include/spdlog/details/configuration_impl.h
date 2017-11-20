@@ -49,7 +49,7 @@ namespace spdlog
             };
 
             // Parse a CSV into a vector of components.  Commas within a quotes string are ignored
-            inline std::vector<std::string> parse_csv(const std::string& csv)
+            inline std::vector<std::string> parse_csv(const std::string& csv, size_t max = std::numeric_limits<size_t>::max())
             {
                 std::vector<std::string> result;
 
@@ -57,8 +57,9 @@ namespace spdlog
 
                 std::string token;
                 auto current = csv.begin();
+                auto count = size_t{ 0 };
 
-                while (current != csv.end())
+                while (current != csv.end() && count < max)
                 {
                     switch (*current)
                     {
@@ -94,6 +95,7 @@ namespace spdlog
                                 // Add the current token to the vector.
                                 result.push_back(token);
                                 token.clear();
+                                ++count;
                             }
                         }
                         else
@@ -113,6 +115,7 @@ namespace spdlog
                             // Add the current token to the vector.
                             result.push_back(token);
                             token.clear();
+                            ++count;
                         }
                         break;
                     default:
@@ -127,6 +130,11 @@ namespace spdlog
                 if (token.size())
                 {
                     result.push_back(token);
+                }
+
+                if (current != csv.end() && count < std::numeric_limits<size_t>::max())
+                {
+                    result.push_back(std::string{ current, csv.end() });
                 }
 
                 return result;
@@ -715,76 +723,6 @@ namespace spdlog
         return result;
     }
 
-    inline configuration configuration::create(const std::vector<config_line>& configs)
-    {
-        ////Sort according to token length - shorter comes first
-        //m_globals = [&configs]()
-        //{
-        //    std::map<std::string, std::string> result;
-        //    for (const auto& c : configs)
-        //    {
-        //        if (c.components.size() == 1)
-        //        {
-        //            result.insert(std::make_pair(c.components.front(), c.value));
-        //        }
-        //    }
-
-        //    return result;
-        //}();
-
-        //m_sinks = [&configs]()
-        //{
-        //    std::map<std::string, sink_config> result;
-        //    for (const auto& c : configs)
-        //    {
-        //        if (c.components.size() == 2 && c.components.front() == "sink")
-        //        {
-        //            result.insert(std::make_pair(c.components.back(), sink_config{ c.value }));
-        //        }
-        //    }
-
-        //    for (const auto& c : configs)
-        //    {
-        //        if (c.components.size() == 3 && c.components.front() == "sink")
-        //        {
-        //            auto& s = result.at(c.components[1]);
-        //            s.attributes.insert(std::make_pair(c.components.back(), c.value));
-        //        }
-        //    }
-
-        //    return result;
-        //}();
-
-        //m_loggers = [&configs]()
-        //{
-        //    std::map<std::string, logger_config> result;
-
-        //    // Loop through all of the configs once, looking for strings that contain "logger", and have 2 elements
-        //    // We'll build up a map of loggers and later we'll add attributes
-        //    for (const auto& c : configs)
-        //    {
-        //        if (c.components.size() == 2 && c.components.front() == "logger")
-        //        {
-        //            result.insert(std::make_pair(c.components.back(), logger_config{ c.value }));
-        //        }
-        //    }
-
-        //    // Loop through all of the configs once, looking for strings that contain "logger", and have 3 elements
-        //    // We'll add to the map of attributes for each logger
-        //    for (const auto& c : configs)
-        //    {
-        //        if (c.components.size() == 3 && c.components.front() == "logger")
-        //        {
-        //            auto& s = result.at(c.components[1]);
-        //            s.attributes.insert(std::make_pair(c.components.back(), c.value));
-        //        }
-        //    }
-
-        //    return result;
-        //}();
-        throw;
-    }
-
     inline void configuration::configure()
     {
         // Call all the globals
@@ -835,7 +773,9 @@ namespace spdlog
     inline configuration::config_line configuration::config_line::parse(const std::string& config)
     {
         namespace du = detail::utilities;
-        auto tokens = du::tokenize(config, ",", 1);
+
+        // Need to parse this as a CSV initially - the first parameter might contain one or more commas
+        auto tokens = du::parse_csv(config, 1);
         if (tokens.empty())
         {
             throw std::runtime_error{ du::make_string{} << "Empty config line found" };
