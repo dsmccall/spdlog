@@ -1,4 +1,5 @@
 #include "includes.h"
+#include <iomanip>
 #include <sstream>
 
 namespace spd = spdlog;
@@ -215,6 +216,20 @@ TEST_CASE("macros", "[auto_configuration]")
     REQUIRE(st_sink->messages()[6] == "error 7 message 8");
     REQUIRE(mt_sink->messages()[7] == "critical 9 message 10");
     REQUIRE(st_sink->messages()[7] == "critical 9 message 10");
+
+    // As the macro uses a lambda, make sure we can capture variables and print them correctly
+    {
+        double a = 1.2345;
+        int b = -987;
+        std::string c = "random";
+        SPD_AUTO_INFO(std::setprecision(5) << "a: "  << a << " b: " << b << " c: " << c);
+
+        REQUIRE(mt_sink->messages().size() == 9);
+        REQUIRE(st_sink->messages().size() == 9);
+
+        REQUIRE(mt_sink->messages()[8] == "a: 1.2345 b: -987 c: random");
+        REQUIRE(st_sink->messages()[8] == "a: 1.2345 b: -987 c: random");
+    }
 }
 
 TEST_CASE("globals", "[auto_configuration]")
