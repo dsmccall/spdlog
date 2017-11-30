@@ -125,7 +125,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cond_logging.cpp" />
     <ClCompile Include="auto_configuration.cpp" />
     <ClCompile Include="errors.cpp" />
     <ClCompile Include="file_helper.cpp" />

@@ -117,7 +117,8 @@ namespace spdlog
         //  value : "TRACE"
         //  attributes : { sinks : "sink_a:sink_b" , pattern : "%v,%v" }
         // The attributes string is parsed as a CSV, so if an attribute value contains a comma, it must
-        // be contained within double quotes
+        // be contained within double quotes.
+		//
         struct config_line
         {
             static config_line parse(const std::string&);

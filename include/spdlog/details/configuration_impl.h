@@ -350,6 +350,16 @@ namespace spdlog
             }
 #endif
 
+#ifdef SPDLOG_ENABLE_SYSLOG
+            inline auto make_syslog_sink(const configuration::sink_config& config) -> std::shared_ptr<spdlog::sinks::sink>
+            {
+                auto ident = get_attribute_default<std::string>("ident", config.attributes, "");
+                auto syslog_option = get_attribute_default<int>("syslog_option", config.attributes, 0);
+                auto syslog_facility = get_attribute_default<int>("syslog_facility", config.attributes, LOG_USER);
+                return std::make_shared<syslog_sink>(ident, syslog_option, syslog_facility);
+            }
+#endif
+
             template<typename Mutex>
             auto make_simple_file_sink(const configuration::sink_config& config) -> std::shared_ptr<spdlog::sinks::sink>
             {
@@ -368,6 +378,12 @@ namespace spdlog
                 auto rotation_minute = attributes::get_attribute_default<int>("rotation_minute", config.attributes, 0);
                 return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex>>(file_path, max_size, max_files, rotation_hour, rotation_minute);
             }
+			
+			template<typename Mutex>
+            auto make_null_sink(const configuration::sink_config&) -> std::shared_ptr<spdlog::sinks::sink>
+            {
+                return std::make_shared<spdlog::sinks::null_sink<Mutex>>();
+            }
 
             inline auto make_sink_registry() -> std::map<std::string, configuration::sink_function>
             {
@@ -376,11 +392,12 @@ namespace spdlog
                 result.emplace(std::make_pair("stdout_sink_mt", make_stdout_sink<std::mutex>));
                 result.emplace(std::make_pair("stderr_sink_st", make_stdout_sink<details::null_mutex>));
                 result.emplace(std::make_pair("stderr_sink_mt", make_stdout_sink<std::mutex>));
+				result.emplace(std::make_pair("null_sink_st", make_null_sink<details::null_mutex>));
+                result.emplace(std::make_pair("null_sink_mt", make_null_sink<std::mutex>));
                 result.emplace(std::make_pair("simple_file_sink_st", make_simple_file_sink<details::null_mutex>));
                 result.emplace(std::make_pair("simple_file_sink_mt", make_simple_file_sink<std::mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_st", make_daily_rotating_file_sink<details::null_mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_mt", make_daily_rotating_file_sink<std::mutex>));
-
 #ifdef _WIN32
                 result.emplace(std::make_pair("stdout_color_sink_st", make_wincolor_stdout_sink<details::null_mutex>));
                 result.emplace(std::make_pair("stdout_color_sink_mt", make_wincolor_stdout_sink<std::mutex>));
@@ -393,6 +410,9 @@ namespace spdlog
                 result.emplace(std::make_pair("stderr_color_sink_mt", make_ansicolor_stderr_sink<std::mutex>));
 #endif // _WIN32
 
+#ifdef SPDLOG_ENABLE_SYSLOG
+                result.emplace(std::make_pair("syslog_sink", make_syslog_sink));
+#endif
 
 #ifdef __ANDROID__
                 result.emplace(std::make_pair("android_sink", make_android_sink));
@@ -674,7 +694,7 @@ namespace spdlog
             // If the line doesn't start with "spdlog." then ignore it
             if (line.find("spdlog.") != 0)
             {
-                break;
+                continue;
             }
 
             // Process the line - first, split on the first "=" - this will give us the primary key and value for this string
@@ -683,7 +703,7 @@ namespace spdlog
             // If there aren't two tokens, then ignore the line
             if (key_value.size() != 2)
             {
-                break;
+                continue;
             }
 
             // Split the key on "."
