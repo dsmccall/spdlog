@@ -6,18 +6,20 @@ namespace spdlog
 {
 namespace sinks
 {
-    template<class Mutex, class FileNameCalc = default_daily_file_name_calculator>
+    template<class Mutex, class FileNameCalc = dateonly_daily_file_name_calculator>
     class daily_rotating_file_sink SPDLOG_FINAL : public base_sink < Mutex >
     {
     public:
         daily_rotating_file_sink(const filename_t &base_filename, std::size_t max_size,
-            std::size_t max_files = std::numeric_limits<size_t>::max(), int rotation_hour = 0, int rotation_minute = 0) :
+            std::size_t max_files = std::numeric_limits<size_t>::max(), int rotation_hour = 0, int rotation_minute = 0, int rotation_period_hours = 24, int rotation_period_minutes = 0) :
             _base_filename(base_filename),
             _current_base_filename(FileNameCalc::calc_filename(_base_filename)),
             _max_size(max_size),
             _max_files(max_files),
             _rotation_h(rotation_hour),
             _rotation_m(rotation_minute),
+            _rotation_period_hours(rotation_period_hours),
+            _rotation_period_minutes(rotation_period_minutes),
             _current_size(0),
             _file_helper()
         {
@@ -76,23 +78,46 @@ namespace sinks
         {
             using details::os::filename_to_str;
             _file_helper.close();
-            for (auto i = _max_files; i > 0; --i)
-            {
-                filename_t src = calc_filename(_current_base_filename, i - 1);
-                filename_t target = calc_filename(_current_base_filename, i);
 
-                if (details::file_helper::file_exists(target))
+            auto files = [this]()
+            {
+                std::vector<std::pair<filename_t, filename_t>> result;
+                auto src = calc_filename(_current_base_filename, 0);
+                auto target = calc_filename(_current_base_filename, 1);
+
+                result.emplace_back(src, target);
+                std::size_t i = 1;
+
+                while (details::file_helper::file_exists(target) && i <= _max_files)
                 {
-                    if (details::os::remove(target) != 0)
-                    {
-                        throw spdlog_ex("rotating_file_sink: failed removing " + filename_to_str(target), errno);
-                    }
+                    src = calc_filename(_current_base_filename, i);
+                    target = calc_filename(_current_base_filename, ++i);
+                    result.emplace_back(src, target);
                 }
-                if (details::file_helper::file_exists(src) && details::os::rename(src, target))
+
+                return result;
+            }();
+
+            // Remove all files above _max_files
+            auto iter = files.begin() + std::min(files.size(), _max_files);
+            for (auto file = iter; file != files.end(); ++file)
+            {
+                if (details::os::remove(file->first) != 0)
                 {
-                    throw spdlog_ex("rotating_file_sink: failed renaming " + filename_to_str(src) + " to " + filename_to_str(target), errno);
+                    throw spdlog_ex("daily_rotating_file_sink: failed removing " + filename_to_str(file->first), errno);
                 }
             }
+
+            files.erase(iter, files.end());
+            
+            for (auto file = files.rbegin(); file != files.rend(); ++file)
+            {
+                if (details::file_helper::file_exists(file->first) && details::os::rename(file->first, file->second))
+                {
+                    throw spdlog_ex("daily_rotating_file_sink: failed renaming " + filename_to_str(file->first) + " to " + filename_to_str(file->second), errno);
+                }
+            }
+
             _file_helper.reopen(true);
         }
 
@@ -111,7 +136,7 @@ namespace sinks
             }
             else
             {
-                return std::chrono::system_clock::time_point(rotation_time + std::chrono::hours(24));
+                return std::chrono::system_clock::time_point(rotation_time + std::chrono::hours(_rotation_period_hours) + std::chrono::minutes(_rotation_period_minutes));
             }
         }
 
@@ -123,6 +148,8 @@ namespace sinks
 
         int _rotation_h;
         int _rotation_m;
+        int _rotation_period_hours;
+        int _rotation_period_minutes;
         std::chrono::system_clock::time_point _rotation_tp;
 
         details::file_helper _file_helper;

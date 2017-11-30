@@ -5,6 +5,7 @@
 
 // Extra sinks that aren't included in spdlog_impl
 #include "spdlog/sinks/msvc_sink.h"
+#include "spdlog/sinks/null_sink.h"
 // End extra sinks
 
 #include <set>
@@ -369,14 +370,27 @@ namespace spdlog
             }
 
             template<typename Mutex>
-            auto make_daily_rotating_file_sink(const configuration::sink_config& config) -> spdlog::sink_ptr
+            auto make_periodcally_rotating_file_sink(const configuration::sink_config& config) -> spdlog::sink_ptr
             {
+                // Rotates at the same time every day and after a specified set of hours/minutes
                 auto file_path = attributes::get_attribute<std::string>("file_path", config.attributes);
                 auto max_size = attributes::get_attribute<size_t>("max_size", config.attributes);
                 auto max_files = attributes::get_attribute_default<size_t>("max_files", config.attributes, std::numeric_limits<size_t>::max());
                 auto rotation_hour = attributes::get_attribute_default<int>("rotation_hour", config.attributes, 0);
                 auto rotation_minute = attributes::get_attribute_default<int>("rotation_minute", config.attributes, 0);
-                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex>>(file_path, max_size, max_files, rotation_hour, rotation_minute);
+                auto rotation_period_hours = attributes::get_attribute_default<int>("rotation_period_hours", config.attributes, 24);
+                auto rotation_period_minutes = attributes::get_attribute_default<int>("rotation_period_minutes", config.attributes, 0);
+                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::default_daily_file_name_calculator>>(file_path, max_size, max_files, rotation_hour, rotation_minute, rotation_period_hours, rotation_period_minutes);
+            }
+
+            template<typename Mutex>
+            auto make_daily_rotating_file_sink(const configuration::sink_config& config) -> spdlog::sink_ptr
+            {
+                // Always rotates at midnight
+                auto file_path = attributes::get_attribute<std::string>("file_path", config.attributes);
+                auto max_size = attributes::get_attribute<size_t>("max_size", config.attributes);
+                auto max_files = attributes::get_attribute_default<size_t>("max_files", config.attributes, std::numeric_limits<size_t>::max());
+                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::dateonly_daily_file_name_calculator>>(file_path, max_size, max_files, 0, 0, 24, 0);
             }
 			
 			template<typename Mutex>
@@ -398,6 +412,8 @@ namespace spdlog
                 result.emplace(std::make_pair("simple_file_sink_mt", make_simple_file_sink<std::mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_st", make_daily_rotating_file_sink<details::null_mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_mt", make_daily_rotating_file_sink<std::mutex>));
+                result.emplace(std::make_pair("periodically_rotating_file_sink_st", make_periodcally_rotating_file_sink<details::null_mutex>));
+                result.emplace(std::make_pair("periodically_rotating_file_sink_mt", make_periodcally_rotating_file_sink<std::mutex>));
 #ifdef _WIN32
                 result.emplace(std::make_pair("stdout_color_sink_st", make_wincolor_stdout_sink<details::null_mutex>));
                 result.emplace(std::make_pair("stdout_color_sink_mt", make_wincolor_stdout_sink<std::mutex>));
