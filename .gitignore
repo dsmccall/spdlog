@@ -1,23 +1,24 @@
-# Auto generated files
+# Prerequisites
+*.d
+
+# Compiled Object files
 *.slo
 *.lo
 *.o
 *.obj
-*.suo
-*.tlog
-*.ilk
-*.log
-*.pdb
-*.idb
-*.iobj
-*.ipdb
-*.opensdf
-*.sdf
+
+# Precompiled Headers
+*.gch
+*.pch
 
 # Compiled Dynamic libraries
 *.so
 *.dylib
 *.dll
+
+# Fortran module files
+*.mod
+*.smod
 
 # Compiled Static libraries
 *.lai
@@ -29,40 +30,3 @@
 *.exe
 *.out
 *.app
-
-# Codelite
-.codelite
-
-# .orig files
-*.orig
-
-# example  files
-example/*
-!example/example.cpp
-!example/bench.cpp
-!example/utils.h
-!example/Makefile*
-!example/example.sln
-!example/example.vcxproj
-!example/CMakeLists.txt
-!example/multisink.cpp
-!example/jni
-
-# generated files
-generated
-
-# Cmake
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Makefile
-cmake_install.cmake
-install_manifest.txt
-/tests/tests.VC.VC.opendb
-/tests/tests.VC.db
-/tests/tests
-/tests/logs/*
-
-# idea
-.idea/
-*.user
