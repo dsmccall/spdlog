@@ -6,7 +6,6 @@
 #include <ostream>
 #include <chrono>
 #include <exception>
-
 #include "catch.hpp"
 #include "utils.h"
 
