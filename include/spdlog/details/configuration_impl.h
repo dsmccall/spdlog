@@ -370,7 +370,7 @@ namespace spdlog
             }
 
             template<typename Mutex>
-            auto make_periodcally_rotating_file_sink(const configuration::sink_config& config) -> spdlog::sink_ptr
+            auto make_periodically_rotating_file_sink(const configuration::sink_config& config) -> spdlog::sink_ptr
             {
                 // Rotates at the same time every day and after a specified set of hours/minutes
                 auto file_path = attributes::get_attribute<std::string>("file_path", config.attributes);
@@ -412,8 +412,8 @@ namespace spdlog
                 result.emplace(std::make_pair("simple_file_sink_mt", make_simple_file_sink<std::mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_st", make_daily_rotating_file_sink<details::null_mutex>));
                 result.emplace(std::make_pair("daily_rotating_file_sink_mt", make_daily_rotating_file_sink<std::mutex>));
-                result.emplace(std::make_pair("periodically_rotating_file_sink_st", make_periodcally_rotating_file_sink<details::null_mutex>));
-                result.emplace(std::make_pair("periodically_rotating_file_sink_mt", make_periodcally_rotating_file_sink<std::mutex>));
+                result.emplace(std::make_pair("periodically_rotating_file_sink_st", make_periodically_rotating_file_sink<details::null_mutex>));
+                result.emplace(std::make_pair("periodically_rotating_file_sink_mt", make_periodically_rotating_file_sink<std::mutex>));
 #ifdef _WIN32
                 result.emplace(std::make_pair("stdout_color_sink_st", make_wincolor_stdout_sink<details::null_mutex>));
                 result.emplace(std::make_pair("stdout_color_sink_mt", make_wincolor_stdout_sink<std::mutex>));
