@@ -98,6 +98,11 @@ inline void spdlog::logger::log(level::level_enum lvl, const char* msg)
     {
         _err_handler(ex.what());
     }
+    catch (...)
+    {
+        _err_handler("Unknown exception in logger " + _name);
+        throw;
+    }
 }
 
 template<typename T>
@@ -113,6 +118,11 @@ inline void spdlog::logger::log(level::level_enum lvl, const T& msg)
     catch (const std::exception &ex)
     {
         _err_handler(ex.what());
+    }
+    catch (...)
+    {
+        _err_handler("Unknown exception in logger " + _name);
+        throw;
     }
 }
 
@@ -250,8 +260,6 @@ template <typename... Args>
 inline void spdlog::logger::critical(const wchar_t* fmt, const Args&... args)
 {
     log(level::critical, fmt, args...);
-}
-
 }
 
 #endif // SPDLOG_WCHAR_TO_UTF8_SUPPORT
