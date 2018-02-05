@@ -10,12 +10,13 @@ namespace sinks
     class daily_rotating_file_sink SPDLOG_FINAL : public base_sink < Mutex >
     {
     public:
-        daily_rotating_file_sink(const filename_t &base_filename, std::size_t max_size,
-            std::size_t max_files = std::numeric_limits<size_t>::max(), int rotation_hour = 0, int rotation_minute = 0, int rotation_period_hours = 24, int rotation_period_minutes = 0) :
+        daily_rotating_file_sink(const filename_t &base_filename, std::size_t max_size, std::size_t max_files = std::numeric_limits<size_t>::max(),
+            bool force_flush = false, int rotation_hour = 0, int rotation_minute = 0, int rotation_period_hours = 24, int rotation_period_minutes = 0) :
             _base_filename(base_filename),
             _current_base_filename(FileNameCalc::calc_filename(_base_filename)),
             _max_size(max_size),
             _max_files(max_files),
+            _force_flush(force_flush),
             _rotation_h(rotation_hour),
             _rotation_m(rotation_minute),
             _rotation_period_hours(rotation_period_hours),
@@ -50,6 +51,11 @@ namespace sinks
                 _current_size = msg.formatted.size();
             }
             _file_helper.write(msg);
+
+            if (_force_flush)
+            {
+                _flush();
+            }
         }
 
         void _flush() override
@@ -145,7 +151,7 @@ namespace sinks
         std::size_t _max_size;
         std::size_t _max_files;
         std::size_t _current_size;
-
+        bool _force_flush;
         int _rotation_h;
         int _rotation_m;
         int _rotation_period_hours;

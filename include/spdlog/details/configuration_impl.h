@@ -205,7 +205,7 @@ namespace spdlog
             };
 
             // Implement less than ordering on strings, ignoring case
-            struct caseless_less_than : std::binary_function<std::string, std::string, bool>
+            struct caseless_less_than : std::function<bool(const std::string&, const std::string&)>
             {
             public:
                 bool operator() (const std::string & s1, const std::string & s2) const
@@ -376,11 +376,12 @@ namespace spdlog
                 auto file_path = attributes::get_attribute<std::string>("file_path", config.attributes);
                 auto max_size = attributes::get_attribute<size_t>("max_size", config.attributes);
                 auto max_files = attributes::get_attribute_default<size_t>("max_files", config.attributes, std::numeric_limits<size_t>::max());
+                auto force_flush = attributes::get_attribute_default<bool>("force_flush", config.attributes, false);
                 auto rotation_hour = attributes::get_attribute_default<int>("rotation_hour", config.attributes, 0);
                 auto rotation_minute = attributes::get_attribute_default<int>("rotation_minute", config.attributes, 0);
                 auto rotation_period_hours = attributes::get_attribute_default<int>("rotation_period_hours", config.attributes, 24);
                 auto rotation_period_minutes = attributes::get_attribute_default<int>("rotation_period_minutes", config.attributes, 0);
-                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::default_daily_file_name_calculator>>(file_path, max_size, max_files, rotation_hour, rotation_minute, rotation_period_hours, rotation_period_minutes);
+                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::default_daily_file_name_calculator>>(file_path, max_size, max_files, force_flush, rotation_hour, rotation_minute, rotation_period_hours, rotation_period_minutes);
             }
 
             template<typename Mutex>
@@ -390,7 +391,8 @@ namespace spdlog
                 auto file_path = attributes::get_attribute<std::string>("file_path", config.attributes);
                 auto max_size = attributes::get_attribute<size_t>("max_size", config.attributes);
                 auto max_files = attributes::get_attribute_default<size_t>("max_files", config.attributes, std::numeric_limits<size_t>::max());
-                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::dateonly_daily_file_name_calculator>>(file_path, max_size, max_files, 0, 0, 24, 0);
+                auto force_flush = attributes::get_attribute_default<bool>("force_flush", config.attributes, false);
+                return std::make_shared<spdlog::sinks::daily_rotating_file_sink<Mutex, sinks::dateonly_daily_file_name_calculator>>(file_path, max_size, max_files, force_flush, 0, 0, 24, 0);
             }
 			
 			template<typename Mutex>
